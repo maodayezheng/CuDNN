@@ -1,5 +1,7 @@
 
 # Simplified version of CUDA.jl from https://github.com/JuliaGPU/CUDA.jl
+# heavily brought from CUDA.jl 
+
 export CUDA
 module CUDA
 export CuPtr
@@ -70,78 +72,55 @@ const driver_error_descriptions = @compat(Dict(
 ))
 
 
-immutable CuDriverError
-    code::Int
+immutable CuDriverError <: Exception
+  code::Int
 end
 
-description(err::CuDriverError) = driver_error_descriptions[err.code]
-# CUDA errors end
+import Base.show
+show(io::IO, error::CuDriverError) = print(io, driver_error_descriptions[error.code])
 
-# CUDA functions call warpper
 macro cucall(fv, argtypes, args...)
-    f = eval(fv)
-    quote
-        _curet = ccall( ($(Meta.quot(f)), libcuda), Cint, $argtypes, $(args...) )
-        if _curet != 0
-            throw(CuDriverError(int(_curet)))
-        end
+  f = eval(fv)
+  args = map(esc, args)
+  quote
+    _curet = ccall( ($(Meta.quot(f)), $libcuda), Cint, $argtypes, $(args...) )
+    if _curet != 0
+      throw(CuDriverError(round(Int, _curet)))
     end
+  end
 end
 
-function initialize()
-    @cucall(cuInit, (Cint,), 0)
-    println("CUDA Driver Initialized")
+function init()
+  @cucall(:cuInit, (Cint,), 0)
 end
 
-initialize()
-
-
-# Get driver version
-
-function driver_version()
-    a = Cint[0]
-    @cucall(cuDriverGetVersion, (Ptr{Cint},), a)
-    return Int(a[1])
-end
-
-const DriverVersion = driver_version()
-
-if DriverVersion < 4000
-    error("CUDA of version 4.0 or above is required.")
-end
-
-
-# box a variable into array
-
+# Cuarray 
 cubox{T}(x::T) = T[x]
 
-#CUDA Device 
+
+# Device and Context
 function devcount()
     # Get the number of CUDA-capable CuDevices
     a = Cint[0]
     @cucall(:cuDeviceGetCount, (Ptr{Cint},), a)
-    return int(a[1])
+    return Int(a[1])
 end
-
 
 immutable CuDevice
-    ordinal::Cint
-    handle::Cint
+  ordinal::Cint
+  handle::Cint
 
-    function CuDevice(i::Int)
-        ordinal = convert(Cint, i)
-        a = Cint[0]
-        @cucall(:cuDeviceGet, (Ptr{Cint}, Cint), a, ordinal)
-        handle = a[1]
-        new(ordinal, handle)
-    end
+  function CuDevice(i::Int)
+    ordinal = convert(Cint, i)
+    a = Cint[0]
+    @cucall(:cuDeviceGet, (Ptr{Cint}, Cint), a, ordinal)
+    handle = a[1]
+    new(ordinal, handle)
+  end
 end
 
-
-
-# CUDA Context
 immutable CuContext
-    handle::Ptr{Void}
+  handle::Ptr{Void}
 end
 
 const CTX_SCHED_AUTO  = 0x00
@@ -152,103 +131,136 @@ const CTX_MAP_HOST = 0x08
 const CTX_LMEM_RESIZE_TO_MAX = 0x10
 
 function create_context(dev::CuDevice, flags::Integer)
-    a = Array(Ptr{Void}, 1)
-    @cucall(:cuCtxCreate_v2, (Ptr{Ptr{Void}}, Cuint, Cint), a, flags, dev.handle)
-    return CuContext(a[1])
+  a = Array(Ptr{Void}, 1)
+  @cucall(:cuCtxCreate_v2, (Ptr{Ptr{Void}}, Cuint, Cint), a, flags, dev.handle)
+  return CuContext(a[1])
 end
 
 create_context(dev::CuDevice) = create_context(dev, 0)
 
 function destroy(ctx::CuContext)
-    @cucall(:cuCtxDestroy_v2, (Ptr{Void},), ctx.handle)
+  @cucall(:cuCtxDestroy_v2, (Ptr{Void},), ctx.handle)
 end
 
 
-immutable CuCapability
-    major::Int
-    minor::Int
+# Memory allocation
+typealias CUdeviceptr Ptr{Void}
+
+type CuPtr
+  p::CUdeviceptr
+
+  CuPtr() = new(convert(CUdeviceptr, 0))
+  CuPtr(p::CUdeviceptr) = new(p)
 end
 
-function name(dev::CuDevice)
-    const buflen = 256
-    buf = Array(Cchar, buflen)
-    @cucall(:cuDeviceGetName, (Ptr{Cchar}, Cint, Cint), buf, buflen, dev.handle)
-    bytestring(pointer(buf))
+cubox(p::CuPtr) = cubox(p.p)
+
+function cualloc(T::Type, len::Integer)
+  a = CUdeviceptr[0]
+  nbytes = round(Int, len) * sizeof(T)
+  @cucall(:cuMemAlloc_v2, (Ptr{CUdeviceptr}, Csize_t), a, nbytes)
+  return CuPtr(a[1])
 end
 
-function totalmem(dev::CuDevice)
-    a = Csize_t[0]
-    @cucall(:cuDeviceTotalMem, (Ptr{Csize_t}, Cint), a, dev.handle)
-    return int(a[1])
-end
-
-function attribute(dev::CuDevice, attrcode::Integer)
-    a = Cint[0]
-    @cucall(:cuDeviceGetAttribute, (Ptr{Cint}, Cint, Cint), a, attrcode, dev.handle)
-    return int(a[1])
-end
-
-capability(dev::CuDevice) = CuCapability(attribute(dev, 75), attribute(dev, 76))
-
-function list_devices()
-    cnt = devcount()
-    if cnt == 0
-        println("No CUDA-capable CuDevice found.")
-        return
-    end
-
-    for i = 0:cnt-1
-        dev = CuDevice(i)
-        nam = name(dev)
-        tmem = iround(totalmem(dev) / (1024^2))
-        cap = capability(dev)
-
-        println("device[$i]: $(nam), capability $(cap.major).$(cap.minor), total mem = $tmem MB")
-    end
+function free(p::CuPtr)
+  @cucall(:cuMemFree_v2, (CUdeviceptr,), p.p)
 end
 
 
-# CUDA Execution control
+# CUDA streams
+immutable CuStream
+  handle::Ptr{Void}
+  blocking::Bool
+  priority::Int
+end
 
+function null_stream()
+  CuStream(convert(Ptr{Void}, 0), true, 0)
+end
+
+function destroy(s::CuStream)
+  @cucall(:cuStreamDestroy_v2, (Ptr{Void},), s.handle)
+end
+
+function synchronize(s::CuStream)
+  @cucall(:cuStreamSynchronize, (Ptr{Void},), s.handle)
+end
+
+# PTX Module and Function
+
+immutable CuModule
+  handle::Ptr{Void}
+
+  function CuModule(filename::AbstractString)
+    a = Array(Ptr{Void}, 1)
+    @cucall(:cuModuleLoad, (Ptr{Ptr{Void}}, Ptr{Cchar}), a, filename)
+    new(a[1])
+  end
+end
+
+function unload(md::CuModule)
+  @cucall(:cuModuleUnload, (Ptr{Void},), md.handle)
+end
+
+
+immutable CuFunction
+  handle::Ptr{Void}
+
+  function CuFunction(md::CuModule, name::ASCIIString)
+    a = Array(Ptr{Void}, 1)
+    @cucall(:cuModuleGetFunction, (Ptr{Ptr{Void}}, Ptr{Void}, Ptr{Cchar}),
+    a, md.handle, name)
+    new(a[1])
+  end
+end
+
+# This value should be manually synced with the one in kernels/kernels.cu
+const THREADS_PER_BLOCK_X = 128
+const THREADS_PER_BLOCK_Y = 1
+const THREADS_PER_BLOCK_Z = 8
+
+using Compat
 get_dim_x(g::Int) = g
-get_dim_x(g::(Int, Int)) = g[1]
-get_dim_x(g::(Int, Int, Int)) = g[1]
+get_dim_x(g::@compat(Tuple{Int, Int})) = g[1]
+get_dim_x(g::@compat(Tuple{Int, Int, Int})) = g[1]
 
 get_dim_y(g::Int) = 1
-get_dim_y(g::(Int, Int)) = g[2]
-get_dim_y(g::(Int, Int, Int)) = g[2]
+get_dim_y(g::@compat(Tuple{Int, Int})) = g[2]
+get_dim_y(g::@compat(Tuple{Int, Int, Int})) = g[2]
 
 get_dim_z(g::Int) = 1
-get_dim_z(g::(Int, Int)) = 1
-get_dim_z(g::(Int, Int, Int)) = g[3]
+get_dim_z(g::@compat(Tuple{Int, Int})) = 1
+get_dim_z(g::@compat(Tuple{Int, Int, Int})) = g[3]
 
-typealias CuDim Union(Int, (Int, Int), (Int, Int, Int))
+using Compat
+@compat typealias CuDim Union{Int, Tuple{Int, Int}, Tuple{Int, Int, Int}}
 
-# Kernel management
+# Stream management
 
 function launch(f::CuFunction, grid::CuDim, block::CuDim, args::Tuple; shmem_bytes::Int=4, stream::CuStream=null_stream())
-    gx = get_dim_x(grid)
-    gy = get_dim_y(grid)
-    gz = get_dim_z(grid)
+  gx = get_dim_x(grid)
+  gy = get_dim_y(grid)
+  gz = get_dim_z(grid)
 
-    tx = get_dim_x(block)
-    ty = get_dim_y(block)
-    tz = get_dim_z(block)
+  tx = get_dim_x(block)
+  ty = get_dim_y(block)
+  tz = get_dim_z(block)
 
-    kernel_args = [cubox(arg) for arg in args]
+  kernel_args = [cubox(arg) for arg in args]
 
-    @cucall(cuLaunchKernel, (
-        Ptr{Void},  # function
-        Cuint,  # grid dim x
-        Cuint,  # grid dim y
-        Cuint,  # grid dim z
-        Cuint,  # block dim x
-        Cuint,  # block dim y
-        Cuint,  # block dim z
-        Cuint,  # shared memory bytes,
-        Ptr{Void}, # stream
-        Ptr{Ptr{Void}}, # kernel parameters,
-        Ptr{Ptr{Void}}), # extra parameters
-        f.handle, gx, gy, gz, tx, ty, tz, shmem_bytes, stream.handle, kernel_args, 0)
+  @cucall(:cuLaunchKernel, (
+      Ptr{Void},       # function
+      Cuint,           # grid dim x
+      Cuint,           # grid dim y
+      Cuint,           # grid dim z
+      Cuint,           # block dim x
+      Cuint,           # block dim y
+      Cuint,           # block dim z
+      Cuint,           # shared memory bytes,
+      Ptr{Void},       # stream
+      Ptr{Ptr{Void}},  # kernel parameters,
+      Ptr{Ptr{Void}}), # extra parameters
+      f.handle, gx, gy, gz, tx, ty, tz, shmem_bytes, stream.handle, kernel_args, Ptr{Ptr{Void}}(0))
+end
 
 end # module CUDA

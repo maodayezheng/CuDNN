@@ -1,4 +1,4 @@
-# some description about NVIDIA CuDNN (CUDNN LIBRARY USer Guide v3.0)
+# NVIDIA CuDNN (CUDNN LIBRARY USer Guide v3.0)
 # Features implemented in CuDNN: 
 # 1. Convolution forward and backward, include cross correlation
 # 2. Pooling forward and backward
@@ -8,6 +8,10 @@
 #     ii) Sigmoid
 #     iii) Hyperbolic tangent
 # 5. Tensor transformation function
+
+# This is only a lower level wrapper of CuDNN
+# The implementation of this module is inspired by CUDA.jl and CuDNN v3.0
+# Detail information about each types and functions can be found in CUDNN LIBRARY USer Guide v3.0
 
 export CuDNN
 module CuDNN
@@ -33,6 +37,7 @@ end
 
 
 function cudnnCreate()
+
 @cudnncheck(:cudnnCreate, (Ptr{cudnnHandle_t},), handle)
 end
 
