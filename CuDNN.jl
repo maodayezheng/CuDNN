@@ -18,12 +18,34 @@ module CuDNN
 
 using CUDA
 using Compat
-const libcuda = Libdl.find_library(["libcudnn"], ["/usr/lib/", "/usr/local/cuda/lib"])
+const libcudnn = Libdl.find_library(["libcudnn"], ["/usr/lib/", "/usr/local/cuda/lib"])
 
-
+#CuDNN errors
 immutable CuDNNError <: Exception
   code :: Int
 end
+
+
+const cudnnStatus_error = @compat(Dict(
+	CUDNN_STATUS_SUCCESS => "The operation complete successfully",
+	CUDNN_STATUS_NOT_INITIALIZED =>"The CuDNN library was not initialized",
+	CUDNN_STATUS_ALLOC_FAILED => "Resurce allocation failed, to correct: deallocate previous allocated memory as much as possible",
+	CUDNN_STATUS_BAD_PARAM =>"Incorrect value passed, to correct: ensure all the parameters being passed have valid values",
+	CUDNN_STATUS_ARCH_MISMATCH =>"Feature absent from the GPU device, to correct: to compile and run the application on device with compute capabilities greater than 3.0",
+	CUDNN_STATUS_MAPPING_ERROR => "An access to GPU memory space failed, to correct: unbind any previous bound textures",
+	CUDNN_STATUS_EXECUTION_FAILED =>"GPU program fail to execute, to correct:ccheck the hardware, an appropriate version of the friver, and the cuDNN library are coreectly installed",
+	CUDNN_STATUS_INTERNAL_ERROR =>"An internal cuDNN operation failed",
+	CUDNN_STATUS_NOT_SUPPORTED =>"The functionality requested is not presently supported by cuDNN",
+	CUDNN_STATUS_LICENSE_ERROR =>"The functionality requested requires license",
+	))
+
+import Base.show
+show(io::IO, error::CuDNNError) = print(io, cudnnStatus_error[error.code])
+
+
+
+
+
 
 macro cudnncheck(fv, argtypes, args...)
   f = eval(fv)
@@ -35,10 +57,17 @@ macro cudnncheck(fv, argtypes, args...)
   end
 end
 
+#Check Version
+#TODO: Complete this in future
+
+
+typealias cudaStream_t Ptr{Void} # hold Cuda Stream
+typealias cudnnHandle_t Ptr{Void} # hold cuDNN library context
 
 function cudnnCreate()
-
+handle = cudnnHandle_t[0]
 @cudnncheck(:cudnnCreate, (Ptr{cudnnHandle_t},), handle)
+return handle[1]
 end
 
 function cudnnDestroy(handle ::cudnnHandle_t)
@@ -54,8 +83,7 @@ function cudnnGetStream(handle,streamId)
 end
 
 # Pointer
-typealias cudaStream_t Ptr{Void}
-typealias cudnnHandle_t Ptr{Void} # hold cuDNN library context
+
 typealias cudnnTensorDescriptor_t Ptr{Void} # hold the description of generic n-D dataset 
 typealias cudnnFilterDescriptor_t Ptr{Void} # hold the description of a filter dataset 
 typealias cudnnConvolutionDescriptor_t Ptr{Void} # hold the description of a convolution operation
@@ -94,21 +122,6 @@ const  CUDNN_STATUS_EXECUTION_FAILED = 6
 const  CUDNN_STATUS_INTERNAL_ERROR   = 7
 const  CUDNN_STATUS_NOT_SUPPORTED    = 8
 const  CUDNN_STATUS_LICENSE_ERROR    = 9
-
-
-const cudnnStatus_t = @compat(Dict(
-	CUDNN_STATUS_SUCCESS => "The operation complete successfully",
-	CUDNN_STATUS_NOT_INITIALIZED =>"The CuDNN library was not initialized",
-	CUDNN_STATUS_ALLOC_FAILED => "Resurce allocation failed, to correct: deallocate previous allocated memory as much as possible",
-	CUDNN_STATUS_BAD_PARAM =>"Incorrect value passed, to correct: ensure all the parameters being passed have valid values",
-	CUDNN_STATUS_ARCH_MISMATCH =>"Feature absent from the GPU device, to correct: to compile and run the application on device with compute capabilities greater than 3.0",
-	CUDNN_STATUS_MAPPING_ERROR => "An access to GPU memory space failed, to correct: unbind any previous bound textures",
-	CUDNN_STATUS_EXECUTION_FAILED =>"GPU program fail to execute, to correct:ccheck the hardware, an appropriate version of the friver, and the cuDNN library are coreectly installed",
-	CUDNN_STATUS_INTERNAL_ERROR =>"An internal cuDNN operation failed",
-	CUDNN_STATUS_NOT_SUPPORTED =>"The functionality requested is not presently supported by cuDNN",
-	CUDNN_STATUS_LICENSE_ERROR =>"The functionality requested requires license",
-	))
-
 
 
 
