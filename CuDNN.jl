@@ -21,7 +21,7 @@ immutable CuDNNError <: Exception
   code :: Int
 end
 
-macro cudnncall(fv, argtypes, args...)
+macro cudnncheck(fv, argtypes, args...)
   f = eval(fv)
   quote
     _curet = ccall( ($(Meta.quot(f)), $libcudnn), Cint, $argtypes, $(args...)  )
@@ -32,12 +32,49 @@ macro cudnncall(fv, argtypes, args...)
 end
 
 
+function cudnnCreate()
+@cudnncheck(:cudnnCreate, (Ptr{cudnnHandle_t},), handle)
+end
+
+function cudnnDestroy(handle ::cudnnHandle_t)
+@cudnncheck(:cudnnDestroy, (cudnnHandle_t,), handle)
+end
+
+function cudnnSetStream(handle,streamId)
+@cudnncheck(:cudnnSetStream,(cudnnHandle_t,cudaStream_t),handle,streamId)
+end
+
+function cudnnGetStream(handle,streamId)
+@cudnncheck(:cudnnGetStream,(cudnnHandle_t,Ptr{cudaStream_t}),handle,streamId)
+end
+
 # Pointer
+typealias cudaStream_t Ptr{Void}
 typealias cudnnHandle_t Ptr{Void} # hold cuDNN library context
 typealias cudnnTensorDescriptor_t Ptr{Void} # hold the description of generic n-D dataset 
 typealias cudnnFilterDescriptor_t Ptr{Void} # hold the description of a filter dataset 
 typealias cudnnConvolutionDescriptor_t Ptr{Void} # hold the description of a convolution operation
 typealias cudnnPoolingDescriptor_t Ptr{Void}
+
+
+#cudnnDataType_t
+CUDNN_DATA_FLOAT = 0  # 32 bits 
+CUDNN_DATA_DOUBLE = 1 # 64 bits
+CUDNN_DATA_HALF = 2   # 16 bits
+
+function cudnnDataTypeCheck{T<:AbstractFloat}(datatype::Type{T})
+
+if datatype == Float32
+	return CUDNN_DATA_FLOAT
+elseif datatype == Float64
+	return CUDNN_DATA_DOUBLE
+elseif datatype == Float16
+	return CUDNN_DATA_HALF
+else
+    error("CUDNN does not support data type $(datatype)")
+end
+
+end
 
 
 #Enumerated types reference to cudnnStatus_t
@@ -67,16 +104,29 @@ const cudnnStatus_t = @compat(Dict(
 	CUDNN_STATUS_LICENSE_ERROR =>"The functionality requested requires license",
 	))
 
-# cudnnDataType_t
-const CUDNN_DATA_FLOAT = 0
-const CUDDN_DATA_DOUBLE = 1
-const CUDNN_DATA_HALF = 2
+
+
+
 
 #cudnnTensorFormat_t
 
-const CUDNN_TENSOR_NCHW = 0
-const CUDNN_TENSOR_NHWC = 1
+const CUDNN_TENSOR_NCHW = 0 #data laid out order: image, features map, rows, columns
+const CUDNN_TENSOR_NHWC = 1 #data laid out order: image, rows, columns, features map
 
+function cudnnCreateTensorDescriptor(tensorDesc)
+@cudnncheck(:cudnnCreateTensorDescriptor,(Ptr{cudnnTensorDescriptor_t},),tensorDesc)
+end
+
+function cudnnSetTensor4dDescriptor{T<:AbstractFloat}(tensorDesc::cudnnTensorDescriptor_t,dataType::Type{T},n,c,h,w)
+dtype = cudnnDataTypeCheck(dataType)
+@cudnncheck(:cudnnSetTensor4dDescriptor,(cudnnTensorDescriptor_t,Cint,Cint,Cint,Cint,Cint,Cint),tensorDesc,CUDNN_TENSOR_NCHW,dtype,n,c,h,w)
+end
+
+
+function cudnnSetTensor4dDescriptorEx{T<:AbstractFloat}(tensorDesc::cudnnTensorDescriptor_t,dataType::Type{T},n,c,h,w,nStride,cStride,hStride,wStride)
+dtype = cudnnDataTypeCheck(dataType)
+@cudnncheck(:cudnnSetTensor4dDescriptorEx,(cudnnTensorDescriptor_t,Cint,Cint,Cint,Cint,Cint,Cint,Cint,Cint,Cint),n,c,h,w,nStride,cStride,hStride,wStride)
+end
 #cudnnAddMode_t
 
 const CUDNN_ADD_IMAGE = 0
@@ -161,12 +211,6 @@ const CUDNN_LRN_CROSS_CHANNEL_DIM1 = 0
 
 #cudnnDivNormMode_t
 CUDNN_DIVNORM_PRECOMPUTED_MEANS = 0
-
-#cudnnDataType_t
-CUDNN_DATA_FLOAT = 0  # 32 bits 
-CUDNN_DATA_DOUBLE = 1 # 64 bits
-CUDNN_DATA_HALF = 2   # 16 bits
-
 
 
 end
