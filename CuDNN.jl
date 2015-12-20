@@ -41,6 +41,7 @@ typealias cudnnPoolingDescriptor_t Ptr{Void}
 
 
 #Enumerated types reference to cudnnStatus_t
+
 const  CUDNN_STATUS_SUCCESS          = 0
 const  CUDNN_STATUS_NOT_INITIALIZED  = 1
 const  CUDNN_STATUS_ALLOC_FAILED     = 2
@@ -98,6 +99,74 @@ const CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT = 3
 const CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM = 0
 const CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_RECOMP_GEMM = 1
 const CUDNN_CONVOLUTION_FWD_ALGO_GEMM = 2
+const CUDNN_CONVOLUTION_FWD_ALGO_DIRECT = 3
+const CUDNN_CONVOLUTION_FWD_ALGO_FFT = 4
+
+#cudnnConvolutionFwdAlgoPerf_t
+# structure type for forward performance measurements
+#TODO: not sure whether need this
+
+#cudnnConvolutionBwdFilterPreference_t
+const CUDNN_CONVOLUTION_BWD_FILTER_NO_WORKSPACE = 0
+const CUDNN_CONVOLUTION_BWD_FILTER_PREFER_FRASTEST = 1
+const CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT = 2
+
+#cudnnConvolutionBwdFilterAlgo_t
+const CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0 = 0
+const CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1 = 1
+const CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3 = 3
+const CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT = 4
+
+#cudnnConvolutionBwdFilterAlgoPerf_t
+# structure type for backward measurements
+#TODO: not sure whether need this 
+
+
+#cudnnConvolutionBwdDataPreference_t
+CUDNN_CONVOLUTION_BWD_DATA_NO_WORKSPACE = 0
+CUDNN_CONVOLUTION_BWD_DATA_PREFER_FASTEST = 1
+CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT = 2
+
+#cudnnConvolutionBwdDataAlgo_t
+const CUDNN_CONVOLUTION_BWD_DATA_ALGO_0 = 0
+const CUDNN_CONVOLUTION_BWD_DATA_ALGO_1 = 1
+const CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT = 4
+
+
+#cudnnConvolutionBwdDataPerf_t
+# a structure type for performance results
+#TODO: not sure whether need this
+
+#cudnnSoftmaxAlgorithm_t
+const CUDNN_SOFTMAX_FAST = 0
+const CUDNN_SOFTMAX_ACCURATE = 1
+const CUDNN_SOFTMAX_LOG = 2
+
+#cudnnSoftmaxMode_t
+const CUDNN_SOFTMAX_MODE_INSTANCE = 0
+const CUDNN_SOFTMAX_MODE_CHANNEL = 1
+
+#cudnnPoolingMode_t
+const CUDNN_POOLING_MAX = 0
+const CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING = 1
+const CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING = 2
+
+#cudnnActivationMode_t
+const CUDNN_ACTIVATION_SIGMOID = 0
+const CUDNN_ACTIVATION_RELU = 1
+const CUDNN_ACTIVATION_TANH = 2
+
+#cudnnLRNMode_t
+const CUDNN_LRN_CROSS_CHANNEL_DIM1 = 0
+
+#cudnnDivNormMode_t
+CUDNN_DIVNORM_PRECOMPUTED_MEANS = 0
+
+#cudnnDataType_t
+CUDNN_DATA_FLOAT = 0  # 32 bits 
+CUDNN_DATA_DOUBLE = 1 # 64 bits
+CUDNN_DATA_HALF = 2   # 16 bits
+
 
 
 end

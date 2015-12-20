@@ -119,7 +119,7 @@ cubox{T}(x::T) = T[x]
 function devcount()
     # Get the number of CUDA-capable CuDevices
     a = Cint[0]
-    @cucall(cuDeviceGetCount, (Ptr{Cint},), a)
+    @cucall(:cuDeviceGetCount, (Ptr{Cint},), a)
     return int(a[1])
 end
 
@@ -131,11 +131,38 @@ immutable CuDevice
     function CuDevice(i::Int)
         ordinal = convert(Cint, i)
         a = Cint[0]
-        @cucall(cuDeviceGet, (Ptr{Cint}, Cint), a, ordinal)
+        @cucall(:cuDeviceGet, (Ptr{Cint}, Cint), a, ordinal)
         handle = a[1]
         new(ordinal, handle)
     end
 end
+
+
+
+# CUDA Context
+immutable CuContext
+    handle::Ptr{Void}
+end
+
+const CTX_SCHED_AUTO  = 0x00
+const CTX_SCHED_SPIN  = 0x01
+const CTX_SCHED_YIELD = 0x02
+const CTX_SCHED_BLOCKING_SYNC = 0x04
+const CTX_MAP_HOST = 0x08
+const CTX_LMEM_RESIZE_TO_MAX = 0x10
+
+function create_context(dev::CuDevice, flags::Integer)
+    a = Array(Ptr{Void}, 1)
+    @cucall(:cuCtxCreate_v2, (Ptr{Ptr{Void}}, Cuint, Cint), a, flags, dev.handle)
+    return CuContext(a[1])
+end
+
+create_context(dev::CuDevice) = create_context(dev, 0)
+
+function destroy(ctx::CuContext)
+    @cucall(:cuCtxDestroy_v2, (Ptr{Void},), ctx.handle)
+end
+
 
 immutable CuCapability
     major::Int
@@ -145,19 +172,19 @@ end
 function name(dev::CuDevice)
     const buflen = 256
     buf = Array(Cchar, buflen)
-    @cucall(cuDeviceGetName, (Ptr{Cchar}, Cint, Cint), buf, buflen, dev.handle)
+    @cucall(:cuDeviceGetName, (Ptr{Cchar}, Cint, Cint), buf, buflen, dev.handle)
     bytestring(pointer(buf))
 end
 
 function totalmem(dev::CuDevice)
     a = Csize_t[0]
-    @cucall(cuDeviceTotalMem, (Ptr{Csize_t}, Cint), a, dev.handle)
+    @cucall(:cuDeviceTotalMem, (Ptr{Csize_t}, Cint), a, dev.handle)
     return int(a[1])
 end
 
 function attribute(dev::CuDevice, attrcode::Integer)
     a = Cint[0]
-    @cucall(cuDeviceGetAttribute, (Ptr{Cint}, Cint, Cint), a, attrcode, dev.handle)
+    @cucall(:cuDeviceGetAttribute, (Ptr{Cint}, Cint, Cint), a, attrcode, dev.handle)
     return int(a[1])
 end
 
