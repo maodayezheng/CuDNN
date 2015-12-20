@@ -8,9 +8,8 @@ using Compat
 # search CUDA library
 const libcuda = Libdl.find_library(["libcuda"], ["/usr/lib/", "/usr/local/cuda/lib"])
 
-
 # CUDA errors 
-const driver_error_descriptions = (Int=>ASCIIString)[
+const driver_error_descriptions = @compat(Dict(
     0 => "Success",
     1 => "Invalid value",
     2 => "Out of memory",
@@ -68,7 +67,7 @@ const driver_error_descriptions = (Int=>ASCIIString)[
     800 => "Operation not permitted",
     801 => "Operation not supported",
     999 => "Unknown error"
-]
+))
 
 
 immutable CuDriverError
@@ -77,74 +76,6 @@ end
 
 description(err::CuDriverError) = driver_error_descriptions[err.code]
 # CUDA errors end
-
-
-
-#CUDA function name MAPPING
-
-const cuInit = :cuInit
-const cuDeviceGetCount = :cuDeviceGetCount
-const cuDriverGetVersion = :cuDriverGetVersion
-const cuDeviceGet = :cuDeviceGet
-const cuDeviceGetAttribute = :cuDeviceGetAttribute
-const cuDeviceGetCount = :cuDeviceGetCount
-const cuDeviceGetName = :cuDeviceGetName
-const cuLaunchKernel = :cuLaunchKernel
-const cuModuleGetFunction = :cuModuleGetFunction
-const cuModuleLoad = :cuModuleLoad
-const cuModuleUnload = :cuModuleUnload
-const cuStreamSynchronize = :cuStreamSynchronize
-
-# when api version >= 3020
-const cuDeviceTotalMem = :cuDeviceTotalMem_v2
-const cuCtxCreate = :cuCtxCreate_v2
-const cuModuleGetGlobal = :cuModuleGetGlobal_v2
-const cuMemGetInfo = :cuMemGetInfo_v2
-const cuMemAlloc = :cuMemAlloc_v2
-const cuMemAllocPitch = :cuMemAllocPitch_v2
-const cuMemFree = :cuMemFree_v2
-const cuMemGetAddressRange = :cuMemGetAddressRange_v2
-const cuMemAllocHost = :cuMemAllocHost_v2
-const cuMemHostGetDevicePointer = :cuMemHostGetDevicePointer_v2
-const cuMemcpyHtoD = :cuMemcpyHtoD_v2
-const cuMemcpyDtoH = :cuMemcpyDtoH_v2
-const cuMemcpyDtoD = :cuMemcpyDtoD_v2
-const cuMemcpyDtoA = :cuMemcpyDtoA_v2
-const cuMemcpyAtoD = :cuMemcpyAtoD_v2
-const cuMemcpyHtoA = :cuMemcpyHtoA_v2
-const cuMemcpyAtoH = :cuMemcpyAtoH_v2
-const cuMemcpyAtoA = :cuMemcpyAtoA_v2
-const cuMemcpyHtoAAsync = :cuMemcpyHtoAAsync_v2
-const cuMemcpyAtoHAsync = :cuMemcpyAtoHAsync_v2
-const cuMemcpy2D = :cuMemcpy2D_v2
-const cuMemcpy2DUnaligned = :cuMemcpy2DUnaligned_v2
-const cuMemcpy3D = :cuMemcpy3D_v2
-const cuMemcpyHtoDAsync = :cuMemcpyHtoDAsync_v2
-const cuMemcpyDtoHAsync = :cuMemcpyDtoHAsync_v2
-const cuMemcpyDtoDAsync = :cuMemcpyDtoDAsync_v2
-const cuMemcpy2DAsync = :cuMemcpy2DAsync_v2
-const cuMemcpy3DAsync = :cuMemcpy3DAsync_v2
-const cuMemsetD8 = :cuMemsetD8_v2
-const cuMemsetD16 = :cuMemsetD16_v2
-const cuMemsetD32 = :cuMemsetD32_v2
-const cuMemsetD2D8 = :cuMemsetD2D8_v2
-const cuMemsetD2D16 = :cuMemsetD2D16_v2
-const cuMemsetD2D32 = :cuMemsetD2D32_v2
-const cuArrayCreate = :cuArrayCreate_v2
-const cuArrayGetDescriptor = :cuArrayGetDescriptor_v2
-const cuArray3DCreate = :cuArray3DCreate_v2
-const cuArray3DGetDescriptor = :cuArray3DGetDescriptor_v2
-const cuTexRefSetAddress = :cuTexRefSetAddress_v2
-const cuTexRefGetAddress = :cuTexRefGetAddress_v2
-const cuGraphicsResourceGetMappedPointer = :cuGraphicsResourceGetMappedPointer_v2
-
-# when api version >= 4000
-const cuCtxDestroy = :cuCtxDestroy_v2
-const cuCtxPopCurrent = :cuCtxPopCurrent_v2
-const cuCtxPushCurrent = :cuCtxPushCurrent_v2
-const cuStreamDestroy = :cuStreamDestroy_v2
-const cuEventDestroy = :cuEventDestroy_v2
-
 
 # CUDA functions call warpper
 macro cucall(fv, argtypes, args...)
@@ -183,5 +114,114 @@ end
 # box a variable into array
 
 cubox{T}(x::T) = T[x]
+
+#CUDA Device 
+function devcount()
+    # Get the number of CUDA-capable CuDevices
+    a = Cint[0]
+    @cucall(cuDeviceGetCount, (Ptr{Cint},), a)
+    return int(a[1])
+end
+
+
+immutable CuDevice
+    ordinal::Cint
+    handle::Cint
+
+    function CuDevice(i::Int)
+        ordinal = convert(Cint, i)
+        a = Cint[0]
+        @cucall(cuDeviceGet, (Ptr{Cint}, Cint), a, ordinal)
+        handle = a[1]
+        new(ordinal, handle)
+    end
+end
+
+immutable CuCapability
+    major::Int
+    minor::Int
+end
+
+function name(dev::CuDevice)
+    const buflen = 256
+    buf = Array(Cchar, buflen)
+    @cucall(cuDeviceGetName, (Ptr{Cchar}, Cint, Cint), buf, buflen, dev.handle)
+    bytestring(pointer(buf))
+end
+
+function totalmem(dev::CuDevice)
+    a = Csize_t[0]
+    @cucall(cuDeviceTotalMem, (Ptr{Csize_t}, Cint), a, dev.handle)
+    return int(a[1])
+end
+
+function attribute(dev::CuDevice, attrcode::Integer)
+    a = Cint[0]
+    @cucall(cuDeviceGetAttribute, (Ptr{Cint}, Cint, Cint), a, attrcode, dev.handle)
+    return int(a[1])
+end
+
+capability(dev::CuDevice) = CuCapability(attribute(dev, 75), attribute(dev, 76))
+
+function list_devices()
+    cnt = devcount()
+    if cnt == 0
+        println("No CUDA-capable CuDevice found.")
+        return
+    end
+
+    for i = 0:cnt-1
+        dev = CuDevice(i)
+        nam = name(dev)
+        tmem = iround(totalmem(dev) / (1024^2))
+        cap = capability(dev)
+
+        println("device[$i]: $(nam), capability $(cap.major).$(cap.minor), total mem = $tmem MB")
+    end
+end
+
+
+# CUDA Execution control
+
+get_dim_x(g::Int) = g
+get_dim_x(g::(Int, Int)) = g[1]
+get_dim_x(g::(Int, Int, Int)) = g[1]
+
+get_dim_y(g::Int) = 1
+get_dim_y(g::(Int, Int)) = g[2]
+get_dim_y(g::(Int, Int, Int)) = g[2]
+
+get_dim_z(g::Int) = 1
+get_dim_z(g::(Int, Int)) = 1
+get_dim_z(g::(Int, Int, Int)) = g[3]
+
+typealias CuDim Union(Int, (Int, Int), (Int, Int, Int))
+
+# Kernel management
+
+function launch(f::CuFunction, grid::CuDim, block::CuDim, args::Tuple; shmem_bytes::Int=4, stream::CuStream=null_stream())
+    gx = get_dim_x(grid)
+    gy = get_dim_y(grid)
+    gz = get_dim_z(grid)
+
+    tx = get_dim_x(block)
+    ty = get_dim_y(block)
+    tz = get_dim_z(block)
+
+    kernel_args = [cubox(arg) for arg in args]
+
+    @cucall(cuLaunchKernel, (
+        Ptr{Void},  # function
+        Cuint,  # grid dim x
+        Cuint,  # grid dim y
+        Cuint,  # grid dim z
+        Cuint,  # block dim x
+        Cuint,  # block dim y
+        Cuint,  # block dim z
+        Cuint,  # shared memory bytes,
+        Ptr{Void}, # stream
+        Ptr{Ptr{Void}}, # kernel parameters,
+        Ptr{Ptr{Void}}), # extra parameters
+        f.handle, gx, gy, gz, tx, ty, tz, shmem_bytes, stream.handle, kernel_args, 0)
 
 end # module CUDA
