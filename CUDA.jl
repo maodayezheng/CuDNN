@@ -95,6 +95,7 @@ function init()
 end
 
 # Cuarray 
+#TODO: to be check
 cubox{T}(x::T) = T[x]
 
 
@@ -148,7 +149,6 @@ typealias CUdeviceptr Ptr{Void}
 
 type CuPtr
   p::CUdeviceptr
-
   CuPtr() = new(convert(CUdeviceptr, 0))
   CuPtr(p::CUdeviceptr) = new(p)
 end
@@ -214,7 +214,8 @@ immutable CuFunction
   end
 end
 
-# This value should be manually synced with the one in kernels/kernels.cu
+
+#TODO: need to mancth kernels
 const THREADS_PER_BLOCK_X = 128
 const THREADS_PER_BLOCK_Y = 1
 const THREADS_PER_BLOCK_Z = 8
@@ -235,7 +236,7 @@ get_dim_z(g::@compat(Tuple{Int, Int, Int})) = g[3]
 using Compat
 @compat typealias CuDim Union{Int, Tuple{Int, Int}, Tuple{Int, Int, Int}}
 
-# Stream management
+# Streams management
 
 function launch(f::CuFunction, grid::CuDim, block::CuDim, args::Tuple; shmem_bytes::Int=4, stream::CuStream=null_stream())
   gx = get_dim_x(grid)
