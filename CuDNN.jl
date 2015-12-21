@@ -17,6 +17,12 @@
 # 2. cudnn.h v3.0 (NVIDIA)
 # 3. mnistCUDNN.cpp (NVIDIA 2014)
 
+
+#TODO:
+# 1. replace Unsigned with a suitable UInt type
+# 2. Add more cudnn Data type assert or check before call cudnncheck
+# 3. extend cudnncheck to handle more error exceptions 
+include("CUDA.jl")
 export CuDNN
 module CuDNN
 
@@ -40,10 +46,12 @@ const  CUDNN_STATUS_LICENSE_ERROR    = 9
 
 
 #CuDNN errors
+#TODO: try to replace this by cudnnErrorString function
+
 immutable CuDNNError <: Exception
   code :: Int
 end
-
+#TODO: replace this with a detail version
 const cudnnStatus_error = @compat(Dict(
 	CUDNN_STATUS_SUCCESS => "The operation complete successfully",
 	CUDNN_STATUS_NOT_INITIALIZED =>"The CuDNN library was not initialized",
@@ -75,7 +83,7 @@ end
 # Error cudnnGetVersion can not find
 #function cudnnGetVersion()
 #version = Cint[0]
-#@cudnncheck(:cudnnGetVerion,(Ptr{Void},),version)
+#@cudnncheck(:cudnnGetVerion,(Void,),version)
 #return version[1]
 #end
 
@@ -104,8 +112,6 @@ return streamId[1]
 end
 
 # Data type pointer
-
-typealias cudnnConvolutionDescriptor_t Ptr{Void} # hold the description of a convolution operation
 typealias cudnnPoolingDescriptor_t Ptr{Void}
 
 
@@ -140,133 +146,10 @@ else
 end
 end
 
-######### CuDNN Tensor Description ###########
-
-# Tensor discriptor 
-typealias cudnnTensorDescriptor_t Ptr{Void} # hold the description of generic n-D dataset 
-
-#cudnnTensorFormat_t
-const CUDNN_TENSOR_NCHW = 0 #data laid out order: image, features map, rows, columns
-const CUDNN_TENSOR_NHWC = 1 #data laid out order: image, rows, columns, features map
-
-function cudnnCreateTensorDescriptor()
-tensorDesc = cudnnTensorDescriptor_t[0]
-@cudnncheck(:cudnnCreateTensorDescriptor,(Ptr{cudnnTensorDescriptor_t},),tensorDesc)
-return tensorDesc[1]
-end
-
-function cudnnSetTensor4dDescriptor{T<:AbstractFloat}(tensorDesc::cudnnTensorDescriptor_t,dataType::Type{T},n,c,h,w)
-dtype = cudnnDataTypeCheck(dataType)
-@cudnncheck(:cudnnSetTensor4dDescriptor,(cudnnTensorDescriptor_t,Cint,Cint,Cint,Cint,Cint,Cint),tensorDesc,CUDNN_TENSOR_NCHW,dtype,n,c,h,w)
-end
-
-
-function cudnnSetTensor4dDescriptorEx{T<:AbstractFloat}(tensorDesc::cudnnTensorDescriptor_t,dataType::Type{T},n,c,h,w,nStride,cStride,hStride,wStride)
-dtype = cudnnDataTypeCheck(dataType)
-@cudnncheck(:cudnnSetTensor4dDescriptorEx,(cudnnTensorDescriptor_t,Cint,Cint,Cint,Cint,Cint,Cint,Cint,Cint,Cint),n,c,h,w,nStride,cStride,hStride,wStride)
-end
-
-function cudnnGetTensor4dDescriptor(tensorDesc::cudnnTensorDescriptor_t)
-dataType = Cint[0]
-n = Cint[0]
-c = Cint[0]
-h = Cint[0]
-w = Cint[0]
-nStride = Cint[0]
-cStride = Cint[0]
-hStride = Cint[0]
-wStride = Cint[0]
-@cudnncheck(:cudnnGetTensor4dDescriptor,(cudnnTensorDescriptor_t,Ptr{Cint},Ptr{Cint},Ptr{Cint},Ptr{Cint},Ptr{Cint},Ptr{Cint},Ptr{Cint},Ptr{Cint},Ptr{Cint}),tensorDesc,dataType,n,c,h,w,nStride,cStride,hStride,wStride)
-dtype = cudnnDataTypeConvert(dataType[1])
-return (tensorDesc,dtype,(n[1],c[1],h[1],w[1]),(nStride[1],cStride[1],hStride[1],wStride[1]))
-end
-
-
-function cudnnSetTensorNdDescriptor{T<:AbstractFloat}(tensorDesc::cudnnTensorDescriptor_t,dataType::Type{T},nbDims::Unsigned,dimA::Array{Unsigned,1},strideA::Array{Unsigned,1})
-dtype = cudnnDataTypeCheck(dataType)
-@cudnncheck(:cudnnSetTensorNdDescriptor,(cudnnTensorDescriptor_t,Cint,Cint,Ptr{Cint},Ptr{Cint}),tensorDesc,dtype,nbDims,dimA,strideA)
-end
-
-function cudnnGetTensorNdDescriptor(tensorDesc::cudnnTensorDescriptor_t,nbDimsRequested::Unsigned)
-dataType = Cint[0]
-nbDims = Cint[0]
-dimA = Cint[0]
-strideA = Cint[0]
-@cudnncheck(:cudnnGetTensorNdDescriptor,(cudnnTensorDescriptor_t,Cint,Ptr{Cint},Ptr{Cint},Ptr{Cint},Ptr{Cint}),tensorDesc,nbDimsRequested,datatype,nbDims,dimA,strideA)
-dtype = cudnnDataTypeConvert(dataType[1])
-return (tensorDesc,dtype,nbDims,dimA,strideA)
-end
-
-function cudnnDestroyTensorDescriptor(tensorDesc::cudnnTensorDescriptor_t)
-@cudnncheck(:cudnnDestroyTensorDescriptor,(cudnnTensorDescriptor_t,),tensorDesc)
-end
-
-#TODO: what happens in Toensor transformation ?
-function cudnnTransformTensor(handle::cudnnHandle_t,alpha,srcDesc::cudnnTensorDescriptor_t,srcData::CuPtr,beta,destDesc::cudnnTensorDescriptor_t,destData::CuPtr)
-@cudnncheck(:cudnnTransformTensor,(cudnnHandle_t,Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void},Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void}),handle,alpha,srcDesc,srcData.p,beta,destDesc,destData.p)
-end
-
-#cudnnAddMode_t
-const CUDNN_ADD_IMAGE = 0
-const CUDNN_ADD_SAME_HW = 0
-const CUDNN_ADD_FEATURE_MAP = 1
-const CUDNN_ADD_SAM_CHW = 1
-const CUDNN_ADD_SAME_C = 2
-const CUDNN_ADD_FULL_TENSOR = 3
-
-#TODO: if the version is less than v3.0 replace cudnnAddTensor_v3 by cudnnAddTensor
-function cudnnAddTensor(handle::cudnnHandle_t,alpha,biasDesc::cudnnTensorDescriptor_t,biasData::CuPtr,beta,srcDestDesc::cudnnTensorDescriptor_t,srcDestData::CuPtr)
-@cudnncheck(:cudnnAddensor_v3,(cudnnHandle_t,Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void},Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void}),handle,alpha,biasDesc,biasData.p,beta,srcDestDesc,srcDestData.p)
-end
-
-function cudnnSetTensor(handle::cudnnHandle_t,srcDestDesc::cudnnTensorDescriptor_t,srcDestData::CuPtr,value)
-@cudnncheck(:cudnnSetTensor,(cudnnHandle_t,cudnnTensorDescriptor_t,Ptr{Void},Ptr{Void}),handle,srcDestDesc,srcDestData.p,value)
-end
-
-function cudnnScaleTensor(handle::cudnnHandle_t,srcDestDesc::cudnnTensorDescriptor_t,srcDestData::CuPtr,alpha)
-@cudnncheck(:cudnnScaleTensor,(cudnnHandle_t,cudnnTensorDescriptor_t,Ptr{Void},Ptr{Void}),handle,srcDestDesc,,srcDestData.p,alpha)
-end
-
-#########cudnn Tensor Description End ##########
-
-
-
-######## cudnn Filter Description ###########
-# filter pointer
-typealias cudnnFilterDescriptor_t Ptr{Void} # hold the description of a filter dataset 
-
-function cudnnCreateFilterDescriptor()
-filterDesc = cudnnFilterDescriptor_t[0]
-@cudnncheck(:cudnnCreateFilterDescriptor,(Ptr{cudnnFilterDescriptor_t},)filterDesc)
-return filterDesc[1]
-end
-
-function cudnnSetFilter4dDescriptor{T<:AbstractFloat}(filterDesc::cudnnFilterDescriptor_t,dataType::Type{T},k,c,h,w)
-
-end
-
-######## cudnn Filter Description End ########
-
-#cudnnConvolutionMode_t
-const CUDNN_CONVOLUTION = 0
-const CUDNN_CROSS_CORRELATION = 1
-
-#cudnnConvolutionFwdPreference_t
-const CUDNN_CONVOLUTION_FWD_NO_WORKSAPCE = 0
-const CUDNN_CONVOLUTION_FWD_PREFER_FASTEST = 1
-const CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT = 3
-
-#cudnnConvolutionFwdAlgo_t
-const CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM = 0
-const CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_RECOMP_GEMM = 1
-const CUDNN_CONVOLUTION_FWD_ALGO_GEMM = 2
-const CUDNN_CONVOLUTION_FWD_ALGO_DIRECT = 3
-const CUDNN_CONVOLUTION_FWD_ALGO_FFT = 4
-
-#cudnnConvolutionFwdAlgoPerf_t
-# structure type for forward performance measurements
-#TODO: not sure whether need this
-
+include("Tensor.jl")
+include("Filter.jl")
+include("ConvForward.jl")
+include("ConvBackward.jl")
 #cudnnConvolutionBwdFilterPreference_t
 const CUDNN_CONVOLUTION_BWD_FILTER_NO_WORKSPACE = 0
 const CUDNN_CONVOLUTION_BWD_FILTER_PREFER_FRASTEST = 1
@@ -279,8 +162,12 @@ const CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3 = 3
 const CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT = 4
 
 #cudnnConvolutionBwdFilterAlgoPerf_t
-# structure type for backward measurements
-#TODO: not sure whether need this 
+type cudnnConvolutionBwdFilterAlgoPerf_t
+algo::Cint
+status::Cint
+time::Cfloat
+memory::Csize_t
+end
 
 
 #cudnnConvolutionBwdDataPreference_t
@@ -298,6 +185,14 @@ const CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT = 4
 # a structure type for performance results
 #TODO: not sure whether need this
 
+function cudnnConvolutionBackwardBias(handle::cudnnHandle_t,alpha,srcDesc::cudnnTensorDescriptor_t,srcData::CuPtr,beta,destDesc::cudnnTensorDescriptor_t,destData::CuPtr)
+@cudnncheck(:cudnnConvolutionBackwardBias,(cudnnHandle_t,Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void},Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void}),handle,alpha,srcDesc,srcData,beta,destDesc,destData)
+end
+# This function is deprecated in v3
+# run cudnnConvolutionBackwardFilter_v3
+#function cudnnConvolutionBackwardFilter(handle::cudnnHandle_t,alpha,srcDesc::cudnnTensorDescriptor_t,srcData::CuPtr,diffDesc::cudnnTensorDescriptor_t,diffData::CuPtr,convDesc::cudnnConvolutionDescriptor_t,beta,gradDesc::cudnnFilterDescriptor_t,gradData::CuPtr)
+#@cudnncheck(:cudnnConvolutionBackwardFilter,(cudnnHandle_t,Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void},cudnnConvolutionDescriptor_t,Ptr{Void},cudnnFilterDescriptor_t,Ptr{Void}),handle,alpha,srcDesc,srcDesc.p,diffDesc,diffData.p,convDesc,beta,gradDesc,gradData.p)
+#end
 #cudnnSoftmaxAlgorithm_t
 const CUDNN_SOFTMAX_FAST = 0
 const CUDNN_SOFTMAX_ACCURATE = 1
