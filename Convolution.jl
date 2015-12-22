@@ -9,6 +9,7 @@ if mode != CUDNN_CONVOLUTION && mode != CUDNN_CROSS_CORRELATION
 end
 end
 
+###### convolution descriptors ########
 function cudnnCreateConvolutionDescriptor()
 convDesc = cudnnConvolutionDescriptor_t[0]
 @cudnncheck(:cudnnCreateConvolutionDescriptor,(Ptr{cudnnConvolutionDescriptor_t},),convDesc)
@@ -68,6 +69,7 @@ function cudnnDestroyConvolutionDescriptor(convDesc::cudnnConvolutionDescriptor_
 @cudnncheck(:cudnnDestroyConvolutionDescriptor,(cudnnConvolutionDescriptor_t,),convDesc)
 end
 
+########### forward convolution ################
 #cudnnConvolutionFwdPreference_t
 const CUDNN_CONVOLUTION_FWD_NO_WORKSAPCE = 0
 const CUDNN_CONVOLUTION_FWD_PREFER_FASTEST = 1
@@ -109,4 +111,98 @@ end
 
 function cudnnConvolutionForward(handle::cudnnHandle_t,alpha,srcDesc::cudnnTensorDescriptor_t,srcData::CuPtr,filterDesc::cudnnFilterDescriptor_t,filterData::CuPtr,convDesc::cudnnConvolutionDescriptor_t,algo::Int,workSpace::CuPtr,workSpaceSizeInBytes::UInt,beta,DestDesc::cudnnTensorDescriptor_t,destData::CuPtr)
 @cudnncheck(:cudnnConvolutionForward,(cudnnHandle_t,Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void},cudnnFilterDescriptor_t,Ptr{Void},cudnnConvolutionDescriptor_t,Cint,Ptr{Void},Csize_t,Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void}),handle,alpha,srcDesc,srcData.p,filterDesc,filterData.p,convDesc,algo,workSpace.p,workSpaceSizeInBytes,beta,destDesc,destData)
+end
+
+
+##########Convolution Backword
+
+#cudnnConvolutionBwdFilterPreference_t
+const CUDNN_CONVOLUTION_BWD_FILTER_NO_WORKSPACE = 0
+const CUDNN_CONVOLUTION_BWD_FILTER_PREFER_FRASTEST = 1
+const CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT = 2
+
+#cudnnConvolutionBwdFilterAlgo_t
+const CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0 = 0
+const CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1 = 1
+const CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3 = 3
+const CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT = 4
+
+#cudnnConvolutionBwdFilterAlgoPerf_t
+type cudnnConvolutionBwdFilterAlgoPerf_t
+algo::Cint
+status::Cint
+time::Cfloat
+memory::Csize_t
+end
+
+
+#cudnnConvolutionBwdDataPreference_t
+CUDNN_CONVOLUTION_BWD_DATA_NO_WORKSPACE = 0
+CUDNN_CONVOLUTION_BWD_DATA_PREFER_FASTEST = 1
+CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT = 2
+
+#cudnnConvolutionBwdDataAlgo_t
+const CUDNN_CONVOLUTION_BWD_DATA_ALGO_0 = 0
+const CUDNN_CONVOLUTION_BWD_DATA_ALGO_1 = 1
+const CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT = 4
+
+
+#cudnnConvolutionBwdDataPerf_t
+type cudnnConvolutionBwdDataAlgoPerf_t
+algo::Cint
+status::Cint
+time::Cfloat
+memory::Csize_t
+end
+
+function cudnnConvolutionBackwardBias(handle::cudnnHandle_t,alpha,srcDesc::cudnnTensorDescriptor_t,srcData::CuPtr,beta,destDesc::cudnnTensorDescriptor_t,destData::CuPtr)
+@cudnncheck(:cudnnConvolutionBackwardBias,(cudnnHandle_t,Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void},Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void}),handle,alpha,srcDesc,srcData,beta,destDesc,destData)
+end
+
+function cudnnFindConvolutionBackwardFilterAlgorithm(handle::cudnnHandle_t,srcDesc::cudnnTensorDescriptor_t,diffDesc::cudnnTensorDescriptor_t,convDesc::cudnnConvolutionDescriptor_t,gradDesc::cudnnFilterDescriptor_t,requestedAlgoCount::Int)
+returnedAlgoCount = Cint[0]
+perfResults = cudnnConvolutionBwdFilterAlgoPerf_t[0]
+@cudnncheck(:cudnnFindConvolutionBackwardFilterAlgorithm,(cudnnHandle_t,cudnnTensorDescriptor_t,cudnnTensorDescriptor_t,cudnnConvolutionDescriptor_t,cudnnFilterDescriptor_t,Ptr{Cint},Ptr{cudnnConvolutionBackwardFilter}),hanlde,srcDesc,diffDesc,convDesc,gradDesc,requestedAlgoCount,returnedAlgoCount,perfResults)
+return (returnedAlgoCount[1],perfResults[1])
+end
+
+function cudnnGetConvolutionBackwardFilterAlgorithm(handle::cudnnHandle_t,srcDesc::cudnnTensorDescriptor_t,diffDesc::cudnnTensorDescriptor_t,convDesc::cudnnConvolutionDescriptor_t,gradDesc::cudnnFilterDescriptor_t,preference::Int,memoryLimitInbytes::UInt)
+algo = Cint[0]
+@cudnncheck(:cudnnGetConvolutionBackwardFilterAlgorithm,(cudnnHandle_t,cudnnTensorDescriptor_t,cudnnTensorDescriptor_t,cudnnConvolutionDescriptor_t,cudnnFilterDescriptor_t,Cint,Csize_t,Ptr{Cint}),handle,srcDesc,diffDesc,convDesc,gradDesc,preference,memoryLimitInbytes,algo)
+return algo[1]
+end
+
+function cudnnGetConvolutionBackwardFilterWorkspaceSize(handle::cudnnHandle_t,srcDesc::cudnnTensorDescriptor_t,diffDesc::cudnnTensorDescriptor_t,convDesc::cudnnConvolutionDescriptor_t,gradDesc::cudnnFilterDescriptor_t,algo::Int)
+sizeInBytes = Csize_t[0]
+@cudnncheck(:cudnnGetConvolutionBackwardFilterWorkspaceSize,(cudnnHandle_t,cudnnTensorDescriptor_t,cudnnTensorDescriptor_t,cudnnConvolutionDescriptor_t,cudnnFilterDescriptor_t,Cint,Ptr{Csize_t}),handle,srcDesc,diffDesc,convDesc,gradDesc,algo,sizeInBytes)
+return sizeInBytes[1]
+end
+
+
+# Add case check for old version
+function cudnnConvolutionBackwardFilter(handle::cudnnHandle_t,alpha,srcDesc::cudnnTensorDescriptor_t,srcData::CuPtr,diffDesc::cudnnTensorDescriptor_t,diffData::CuPtr,convDesc::cudnnConvolutionDescriptor_t,algo::Int,workspace::CuPtr,workspaceSizeInBytes::UInt,beta,gradDesc::cudnnFilterDescriptor_t,gradData::CuPtr)
+@cudnncheck(:cudnnConvolutionBackwardFilter_v3,(cudnnHandle_t,Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void},cudnnConvolutionDescriptor_t,Cint,Ptr{Void},Csize_t,cudnnFilterDescriptor_t,Ptr{Void}),handle,alpha,srcDesc,srcData.p,diffDesc,diffData.p,convDesc,workspaceSizeInBytes,workspace.p,beta,gradDesc,gradData.p)
+end
+#Add case check for old version
+function cudnnConvolutionBackwardData(handle::cudnnHandle_t,alpha,filterDesc::cudnnFilterDescriptor_t,filterData::CuPtr,diffDesc::cudnnTensorDescriptor_t,diffData::CuPtr,convDesc::cudnnConvolutionDescriptor_t,algo::Int,workspace::CuPtr,workspaceSizeInBytes::UInt,beta,gradDesc::cudnnTensorDescriptor_t,gradData::CuPtr)
+@cudnncheck(:cudnnConvolutionBackwardData_v3,(cudnnHandle_t,Ptr{Void},cudnnFilterDescriptor_t,Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void},cudnnConvolutionDescriptor_t,Cint,Ptr{Void},Csize_t,Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void}),handle,alpha,filterDesc,filterData,diffDesc,diffData,convDesc,algo,workspace,workspaceSizeInBytes,beta,gradDesc,gradData)
+end
+
+function cudnnFindConvolutionBackwardDataAlgorithm(handle::cudnnHandle_t,filterDesc::cudnnFilterDescriptor_t,diffDesc::cudnnTensorDescriptor_t,convDesc::cudnnConvolutionDescriptor_t,gradDesc::cudnnTensorDescriptor_t,requestedAlgoCount::Int)
+requestedAlgoCount = Cint[0]
+perfResults = cudnnConvolutionBwdFilterAlgoPerf_t[0]
+@cudnncheck(:cudnnFindConvolutionBackwardDataAlgorithm,(cudnnHandle_t,cudnnFilterDescriptor_t,cudnnTensorDescriptor_t,cudnnConvolutionDescriptor_t,cudnnTensorDescriptor_t,Cint,Ptr{Cint},Ptr{cudnnConvolutionBwdFilterAlgoPerf_t}),handle,filterDesc,diffDesc,convDesc,gradDesc,requestedAlgoCount,returnedAlgoCount,perfResults)
+return (requestedAlgoCount[1],perfResults[1])
+end
+
+function cudnnGetConvolutionbackwardDataAlgorithm(handle::cudnnHandle_t,filterDesc::cudnnFilterDescriptor_t,diffDesc::cudnnTensorDescriptor_t,convDesc::cudnnConvolutionDescriptor_t,gradDesc::cudnnTensorDescriptor_t,preference::Int,memoryLimitInbytes::UInt)
+algo = Cint[0]
+@cudnncheck(:cudnnGetConvolutionbackwardDataAlgorithm,(cudnnHandle_t,cudnnFilterDescriptor_t,cudnnTensorDescriptor_t,cudnnConvolutionDescriptor_t,cudnnTensorDescriptor_t,Cint,Csize_t,Ptr{Cint}),handle,filterDesc,diffDesc,convDesc,gradDesc,preference,memoryLimitInbytes,algo)
+return algo[1]
+end
+
+function cudnnGetConvolutionBackwardDataWorkspaceSize(handle::cudnnHandle_t,filterDesc::cudnnFilterDescriptor_t,diffDesc::cudnnTensorDescriptor_t,convDesc::cudnnConvolutionDescriptor_t,gradDesc::cudnnTensorDescriptor_t,algo::Int)
+sizeInBytes = Csize_t[0]
+@cudnncheck(:cudnnGetConvolutionBackwardDataWorkspaceSize,(cudnnHandle_t,cudnnFilterDescriptor_t,cudnnTensorDescriptor_t,cudnnConvolutionDescriptor_t,cudnnTensorDescriptor_t,Cint,Ptr{Csize_t}),handle,filterDesc,diffDesc,convDesc,gradDesc,algo,sizeInBytes)
+return sizeInBytes[1]
 end

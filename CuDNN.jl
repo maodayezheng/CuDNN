@@ -148,51 +148,8 @@ end
 
 include("Tensor.jl")
 include("Filter.jl")
-include("ConvForward.jl")
-include("ConvBackward.jl")
-#cudnnConvolutionBwdFilterPreference_t
-const CUDNN_CONVOLUTION_BWD_FILTER_NO_WORKSPACE = 0
-const CUDNN_CONVOLUTION_BWD_FILTER_PREFER_FRASTEST = 1
-const CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT = 2
+include("Convolution.jl")
 
-#cudnnConvolutionBwdFilterAlgo_t
-const CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0 = 0
-const CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1 = 1
-const CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3 = 3
-const CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT = 4
-
-#cudnnConvolutionBwdFilterAlgoPerf_t
-type cudnnConvolutionBwdFilterAlgoPerf_t
-algo::Cint
-status::Cint
-time::Cfloat
-memory::Csize_t
-end
-
-
-#cudnnConvolutionBwdDataPreference_t
-CUDNN_CONVOLUTION_BWD_DATA_NO_WORKSPACE = 0
-CUDNN_CONVOLUTION_BWD_DATA_PREFER_FASTEST = 1
-CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT = 2
-
-#cudnnConvolutionBwdDataAlgo_t
-const CUDNN_CONVOLUTION_BWD_DATA_ALGO_0 = 0
-const CUDNN_CONVOLUTION_BWD_DATA_ALGO_1 = 1
-const CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT = 4
-
-
-#cudnnConvolutionBwdDataPerf_t
-# a structure type for performance results
-#TODO: not sure whether need this
-
-function cudnnConvolutionBackwardBias(handle::cudnnHandle_t,alpha,srcDesc::cudnnTensorDescriptor_t,srcData::CuPtr,beta,destDesc::cudnnTensorDescriptor_t,destData::CuPtr)
-@cudnncheck(:cudnnConvolutionBackwardBias,(cudnnHandle_t,Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void},Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void}),handle,alpha,srcDesc,srcData,beta,destDesc,destData)
-end
-# This function is deprecated in v3
-# run cudnnConvolutionBackwardFilter_v3
-#function cudnnConvolutionBackwardFilter(handle::cudnnHandle_t,alpha,srcDesc::cudnnTensorDescriptor_t,srcData::CuPtr,diffDesc::cudnnTensorDescriptor_t,diffData::CuPtr,convDesc::cudnnConvolutionDescriptor_t,beta,gradDesc::cudnnFilterDescriptor_t,gradData::CuPtr)
-#@cudnncheck(:cudnnConvolutionBackwardFilter,(cudnnHandle_t,Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void},cudnnConvolutionDescriptor_t,Ptr{Void},cudnnFilterDescriptor_t,Ptr{Void}),handle,alpha,srcDesc,srcDesc.p,diffDesc,diffData.p,convDesc,beta,gradDesc,gradData.p)
-#end
 #cudnnSoftmaxAlgorithm_t
 const CUDNN_SOFTMAX_FAST = 0
 const CUDNN_SOFTMAX_ACCURATE = 1
