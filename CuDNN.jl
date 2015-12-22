@@ -148,18 +148,6 @@ include("Convolution.jl")
 include("Softmax.jl")
 include("Pooling.jl")
 include("Activation.jl")
-
-
-#cudnnActivationMode_t
-const CUDNN_ACTIVATION_SIGMOID = 0
-const CUDNN_ACTIVATION_RELU = 1
-const CUDNN_ACTIVATION_TANH = 2
-
-#cudnnLRNMode_t
-const CUDNN_LRN_CROSS_CHANNEL_DIM1 = 0
-
-#cudnnDivNormMode_t
-CUDNN_DIVNORM_PRECOMPUTED_MEANS = 0
-
+include("LinearRectifier.jl")
 
 end
