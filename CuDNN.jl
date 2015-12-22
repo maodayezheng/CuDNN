@@ -149,15 +149,7 @@ end
 include("Tensor.jl")
 include("Filter.jl")
 include("Convolution.jl")
-
-#cudnnSoftmaxAlgorithm_t
-const CUDNN_SOFTMAX_FAST = 0
-const CUDNN_SOFTMAX_ACCURATE = 1
-const CUDNN_SOFTMAX_LOG = 2
-
-#cudnnSoftmaxMode_t
-const CUDNN_SOFTMAX_MODE_INSTANCE = 0
-const CUDNN_SOFTMAX_MODE_CHANNEL = 1
+include("Softmax.jl")
 
 #cudnnPoolingMode_t
 const CUDNN_POOLING_MAX = 0
