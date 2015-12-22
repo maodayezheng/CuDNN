@@ -11,7 +11,7 @@
 #     iii) Hyperbolic tangent
 # 5. Tensor transformation function
 
-# This is only a lower level wrapper of CuDNN
+# This is a lower level wrapper for CuDNN
 # The implementation of this module refers to following developments:
 # 1. CUDA.jl (https://github.com/JuliaGPU/CUDA.jl)
 # 2. cudnn.h v3.0 (NVIDIA)
@@ -111,10 +111,6 @@ streamId = cudaStream_t[0]
 return streamId[1]
 end
 
-# Data type pointer
-typealias cudnnPoolingDescriptor_t Ptr{Void}
-
-
 #cudnnDataType_t
 CUDNN_DATA_FLOAT = 0  # 32 bits 
 CUDNN_DATA_DOUBLE = 1 # 64 bits
@@ -150,11 +146,9 @@ include("Tensor.jl")
 include("Filter.jl")
 include("Convolution.jl")
 include("Softmax.jl")
+include("Pooling.jl")
+include("Activation.jl")
 
-#cudnnPoolingMode_t
-const CUDNN_POOLING_MAX = 0
-const CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING = 1
-const CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING = 2
 
 #cudnnActivationMode_t
 const CUDNN_ACTIVATION_SIGMOID = 0
