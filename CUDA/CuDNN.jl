@@ -17,17 +17,16 @@
 # 2. cudnn.h v3.0 (NVIDIA)
 # 3. mnistCUDNN.cpp (NVIDIA 2014)
 
-
 #TODO:
-# 1. replace Unsigned with a suitable UInt type
-# 2. Add more cudnn Data type assert or check before call cudnncheck
-# 3. extend cudnncheck to handle more error exceptions 
+# 1. extend cudnncheck to handle more error exceptions 
+# 2. Now the wrapper only wrap up the CuDNN v3.0 might need to support elder version
 include("CUDA.jl")
 export CuDNN
 module CuDNN
 
 using CUDA
 using Compat
+# this only valid for Linux and Mac OS, may also need one for windows
 const libcudnn = Libdl.find_library(["libcudnn"], ["/usr/lib/", "/usr/local/cuda/lib"])
 
 
@@ -46,12 +45,11 @@ const  CUDNN_STATUS_LICENSE_ERROR    = 9
 
 
 #CuDNN errors
-#TODO: try to replace this by cudnnErrorString function
 
 immutable CuDNNError <: Exception
   code :: Int
 end
-#TODO: replace this with a detail version
+#TODO: The error exception here is only the general summary, detail might be needed.
 const cudnnStatus_error = @compat(Dict(
 	CUDNN_STATUS_SUCCESS => "The operation complete successfully",
 	CUDNN_STATUS_NOT_INITIALIZED =>"The CuDNN library was not initialized",
@@ -68,7 +66,6 @@ const cudnnStatus_error = @compat(Dict(
 import Base.show
 show(io::IO, error::CuDNNError) = print(io, cudnnStatus_error[error.code])
 
-
 macro cudnncheck(fv, argtypes, args...)
   f = eval(fv)
   quote
@@ -80,12 +77,10 @@ macro cudnncheck(fv, argtypes, args...)
 end
 
 #Check Version
-# Error cudnnGetVersion can not find
-#function cudnnGetVersion()
-#version = Cint[0]
-#@cudnncheck(:cudnnGetVerion,(Void,),version)
-#return version[1]
-#end
+function cudnnGetVersion()
+version = ccall((:cudnnGetVersion,libcudnn),Csize_t,())
+return version
+end
 
 #context pointer
 typealias cudaStream_t Ptr{Void} # hold Cuda Stream
@@ -101,11 +96,11 @@ function cudnnDestroy(handle ::cudnnHandle_t)
 @cudnncheck(:cudnnDestroy, (cudnnHandle_t,), handle)
 end
 
-function cudnnSetStream(handle,streamId)
+function cudnnSetStream(handle::cudnnHandle_t,streamId::cudaStream_t)
 @cudnncheck(:cudnnSetStream,(cudnnHandle_t,cudaStream_t),handle,streamId)
 end
 
-function cudnnGetStream(handle)
+function cudnnGetStream(handle::cudnnHandle_t)
 streamId = cudaStream_t[0]
 @cudnncheck(:cudnnGetStream,(cudnnHandle_t,Ptr{cudaStream_t}),handle,streamId)
 return streamId[1]
@@ -128,7 +123,6 @@ else
     error("CUDNN does not support data type $(datatype)")
 end
 end
-
 
 function cudnnDataTypeConvert(dateType::Cint)
 if dataType == CUDNN_DATA_FLOAT

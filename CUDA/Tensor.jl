@@ -38,12 +38,12 @@ return (tensorDesc,dtype,(n[1],c[1],h[1],w[1]),(nStride[1],cStride[1],hStride[1]
 end
 
 
-function cudnnSetTensorNdDescriptor{T<:AbstractFloat}(tensorDesc::cudnnTensorDescriptor_t,dataType::Type{T},nbDims::Unsigned,dimA::Array{Unsigned,1},strideA::Array{Unsigned,1})
+function cudnnSetTensorNdDescriptor{T<:AbstractFloat}(tensorDesc::cudnnTensorDescriptor_t,dataType::Type{T},nbDims::UInt,dimA::Array{UInt,1},strideA::Array{UInt,1})
 dtype = cudnnDataTypeCheck(dataType)
 @cudnncheck(:cudnnSetTensorNdDescriptor,(cudnnTensorDescriptor_t,Cint,Cint,Ptr{Cint},Ptr{Cint}),tensorDesc,dtype,nbDims,dimA,strideA)
 end
 
-function cudnnGetTensorNdDescriptor(tensorDesc::cudnnTensorDescriptor_t,nbDimsRequested::Unsigned)
+function cudnnGetTensorNdDescriptor(tensorDesc::cudnnTensorDescriptor_t,nbDimsRequested::UInt)
 dataType = Cint[0]
 nbDims = Cint[0]
 dimA = Cint[0]
@@ -57,7 +57,8 @@ function cudnnDestroyTensorDescriptor(tensorDesc::cudnnTensorDescriptor_t)
 @cudnncheck(:cudnnDestroyTensorDescriptor,(cudnnTensorDescriptor_t,),tensorDesc)
 end
 
-#TODO: what happens in Toensor transformation ?
+
+#WARN: alpha, beta should be float, but in CuDNN.h it is void
 function cudnnTransformTensor(handle::cudnnHandle_t,alpha,srcDesc::cudnnTensorDescriptor_t,srcData::CuPtr,beta,destDesc::cudnnTensorDescriptor_t,destData::CuPtr)
 @cudnncheck(:cudnnTransformTensor,(cudnnHandle_t,Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void},Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void}),handle,alpha,srcDesc,srcData.p,beta,destDesc,destData.p)
 end
@@ -72,6 +73,7 @@ const CUDNN_ADD_FULL_TENSOR = 3
 
 #TODO: if the version is less than v3.0 replace cudnnAddTensor_v3 by cudnnAddTensor
 #TODO: add scaling_type(), to convert alpha, beta to scaling_type
+#WARN: alpha, beta should be float, but in CuDNN.h it is void
 function cudnnAddTensor(handle::cudnnHandle_t,alpha,biasDesc::cudnnTensorDescriptor_t,biasData::CuPtr,beta,srcDestDesc::cudnnTensorDescriptor_t,srcDestData::CuPtr)
 @cudnncheck(:cudnnAddensor_v3,(cudnnHandle_t,Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void},Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void}),handle,alpha,biasDesc,biasData.p,beta,srcDestDesc,srcDestData.p)
 end

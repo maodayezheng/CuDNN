@@ -22,12 +22,12 @@ dtype = cudnnDataTypeConvert(dataType[1])
 return(filterDesc,dtype,(k[1],c[1],h[1],w[1]))
 end
 
-function cudnnSetFilterNdDescriptor{T<:AbstractFloat}(filterDesc::cudnnFilterDescriptor_t,dataType::T,nbDims::Unsigned,filterDimA::Array{Unsigned,1})
+function cudnnSetFilterNdDescriptor{T<:AbstractFloat}(filterDesc::cudnnFilterDescriptor_t,dataType::T,nbDims::UInt,filterDimA::Array{UInt,1})
 dtype = cudnnDataTypeCheck(dataType)
 @cudnncheck(:cudnnSetFilterNdDescriptor,(cudnnFilterDescriptor_t,Cint,Cint,Ptr{Cint}),filterDesc,dtype,nbDims,filterDimA)
 end
 
-function cudnnGetFilterNdDescriptor(filterDesc::cudnnFilterDescriptor_t,nbDimsRequested::Unsigned,filterDimA::Array{Unsigned,1})
+function cudnnGetFilterNdDescriptor(filterDesc::cudnnFilterDescriptor_t,nbDimsRequested::UInt,filterDimA::Array{UInt,1})
 dataType = Cint[0]
 nbDims = Cint[0]
 @cudnncheck(:cudnnGetFilterNdDescriptor,(cudnnFilterDescriptor_t,Cint,Ptr{Cint},Ptr{Cint},Ptr{Cint}),filterDesc,nbDimsRequested,dataType,nbDims,filterDimA)

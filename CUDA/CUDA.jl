@@ -1,6 +1,5 @@
-
 # Simplified version of CUDA.jl from https://github.com/JuliaGPU/CUDA.jl
-# heavily brought from CUDA.jl 
+# Only the Components required for testing CuDNN includes here
 
 export CUDA
 module CUDA

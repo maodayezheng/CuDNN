@@ -7,6 +7,8 @@ const CUDNN_SOFTMAX_LOG = 2
 const CUDNN_SOFTMAX_MODE_INSTANCE = 0
 const CUDNN_SOFTMAX_MODE_CHANNEL = 1
 
+
+#WARN: alpha, beta should be float, but in CuDNN.h it is void
 function cudnnSoftmaxForward(handle::cudnnHandle_t,algorithm::Int,mode::Int,alpha,srcDesc::cudnnTensorDescriptor_t,srcData::CuPtr,beta,destDesc::cudnnTensorDescriptor_t,destData::CuPtr)
 @cudnncheck(:cudnnSoftmaxForward,(cudnnHandle_t,Cint,Cint,Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void}),handle,algorithm,mode,alpha,srcDesc,srcData.p,beta,destDesc,destData.p)
 end

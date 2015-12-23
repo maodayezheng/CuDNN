@@ -12,7 +12,7 @@ lrnDesc = cudnnLRNDescriptor_t[0]
 return lrnDesc[1]
 end
 
-function cudnnSetLRNDescriptor(lrnDesc::cudnnLRNDescriptor_t,lrnN::Unsigned,lrnAlpha::Float64,lrnBeta::Float64,lrnK::Float64)
+function cudnnSetLRNDescriptor(lrnDesc::cudnnLRNDescriptor_t,lrnN::UInt,lrnAlpha::Float64,lrnBeta::Float64,lrnK::Float64)
 @cudnncheck(:cudnnSetLRNDescriptor,(cudnnLRNDescriptor_t,Cuint,Cdouble,Cdouble,Cdouble),lrnDesc,lrnN,lrnAlpha,lrnBeta,lrnK)
 end
 
@@ -29,6 +29,8 @@ function cudnnDestroyLRNDescriptor(lrnDesc::cudnnLRNDescriptor_t)
 @cudnncheck(:cudnnDestroyLRNDescriptor,(cudnnLRNDescriptor_t,),lrnDesc)
 end
 
+
+#WARN: alpha, beta should be float, but in CuDNN.h it is void
 function cudnnLRNCrossChanelForward(handle::cudnnHandle_t,lrnDesc::cudnnLRNDescriptor_t,mode::Int,alpha,srcDesc::cudnnTensorDescriptor_t,srcData::CuPtr,beta,destDesc::cudnnTensorDescriptor_t,destData::CuPtr)
 @cudnncheck(:cudnnLRNCrossChanelForward,(cudnnHandle_t,cudnnLRNDescriptor_t,Cint,Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void},Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void}),handle,lrnDesc,mode,alpha,srcDesc,srcData.p,beta,destDesc,destData.p)
 end

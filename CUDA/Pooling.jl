@@ -60,6 +60,8 @@ outDimA = Array(Cint,nbDims)
 return outDimA
 end
 
+
+#WARN: alpha, beta should be float, but in CuDNN.h it is void
 function cudnnPoolingForward(handle::cudnnHandle_t,poolingDesc::cudnnPoolingDescriptor_t,alpha,srcDesc::cudnnTensorDescriptor_t,srcData::CuPtr,beta,destDesc::cudnnTensorDescriptor_t,destData::CuPtr)
 @cudnncheck(:cudnnPoolingForward,(cudnnHandle_t,cudnnPoolingDescriptor_t,Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void},Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void}),handle,poolingDesc,alpha,srcDesc,srcData.p,beta,destDesc,destData.p)
 end
