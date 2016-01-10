@@ -79,6 +79,7 @@ end
 #Check Version
 function cudnnGetVersion()
 version = ccall((:cudnnGetVersion,libcudnn),Csize_t,())
+println("CuDNN version : $version")
 return version
 end
 
@@ -142,6 +143,6 @@ include("Convolution.jl")
 include("Softmax.jl")
 include("Pooling.jl")
 include("Activation.jl")
-include("LinearRectifier.jl")
+include("Rectifier.jl")
 
 end

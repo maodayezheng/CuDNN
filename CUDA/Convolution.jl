@@ -60,7 +60,7 @@ return(convDesc,arrayLength[1],PadA,filterStrideA,upscaleA,mode,dtype)
 end
 
 function cudnnGetConvolutionNdForwardOutputDim(convDesc::cudnnConvolutionDescriptor_t,inputTensorDesc::cudnnTensorDescriptor_t,filterDesc::cudnnFilterDescriptor_t,nbDims::Int)
-tensorOutputDimA = Cint[0]
+tensorOutputDimA = Cint[nbDims]
 @cudnncheck(:cudnnGetConvolutionNdForwardOutputDim,(cudnnConvolutionDescriptor_t,cudnnTensorDescriptor_t,cudnnFilterDescriptor_t,Cint,Ptr{Cint}),convDesc,inputTensorDesc,filterDesc,nbDims,tensorOutputDimA)
 return tensorOutputDimA
 end
@@ -111,6 +111,7 @@ end
 
 function cudnnConvolutionForward(handle::cudnnHandle_t,alpha,srcDesc::cudnnTensorDescriptor_t,srcData::CuPtr,filterDesc::cudnnFilterDescriptor_t,filterData::CuPtr,convDesc::cudnnConvolutionDescriptor_t,algo::Int,workSpace::CuPtr,workSpaceSizeInBytes::UInt,beta,DestDesc::cudnnTensorDescriptor_t,destData::CuPtr)
 @cudnncheck(:cudnnConvolutionForward,(cudnnHandle_t,Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void},cudnnFilterDescriptor_t,Ptr{Void},cudnnConvolutionDescriptor_t,Cint,Ptr{Void},Csize_t,Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void}),handle,alpha,srcDesc,srcData.p,filterDesc,filterData.p,convDesc,algo,workSpace.p,workSpaceSizeInBytes,beta,destDesc,destData)
+return destData
 end
 
 
