@@ -115,27 +115,6 @@ function free()
 
 end
 
-type SoftmaxNode <:Node
-
-end
-
-
-function softmaxSetup()
-
-end
-
-
-function forward()
-
-end
-
-function backward()
-
-end
-
-function free()
-
-end
 
 type LinearRectifierNode <:Node
 normDesc::cudnnLRNDescriptor_t
@@ -169,6 +148,37 @@ end
 function free()
 
 end
+
+
+#softmax
+function softmaxForward(ctx::CuDNNContext,n::Int,c::Int,h::Int,w::Int)
+resize(ctx,n*w*c*h)
+CuDNN.cudnnSetTensorNdDescriptor(ctx.srcTensorDesc,ctx.tensorFormat,ctx.dataType,n,c,h,w)
+CuDNN.cudnnSetTensorNdDescriptor(ctx.dstTensorDesc,ctx.tensorFormat,ctx.dataType,n,c,h,w)
+alpha = 1.0
+beta = 0.0
+CuDNN.cudnnSoftmaxForward(ctx.handle,1,1,alpha,ctx.srcTensorDesc,ctx.srcData,beta,ctx.dstTensorDesc,ctx.dstData)
+end
+
+#TODO: wrapping this function
+function softmaxBackward()
+
+end
+
+#activation
+function activationForward(ctx::CuDNNContext,n::Int,c::Int,h::Int,w::Int)
+resize(ctx,n*c*h*w)
+CuDNN.cudnnSetTensorNdDescriptor(ctx.srcTensorDesc,ctx.tensorFormat,ctx.dataType,n,c,h,w)
+CuDNN.cudnnSetTensorNdDescriptor(ctx.srcTensorDesc,ctx.tensorFormat,ctx.dataType,n,c,h,w)
+alpha = 1.0
+beta = 0.0
+CuDNN.cudnnActivationForward(ctx.handle,1,alpha,ctx.srcTensorDesc,ctx.srcData,beta,ctx.dstTensorDesc,ctx.dstData)
+end
+
+function activationBackward()
+
+end
+
 
 function resize(ctx::CuDNNContext,size::Int)
 if(data.p != nothing)
