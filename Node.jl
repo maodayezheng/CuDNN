@@ -1,6 +1,6 @@
-#TODO: need to discuss CUDA data allocation with Dr David Barber, which might involve 
-# in changes in GPU backend.
 
+include('CUDA/CuDNN')
+using CuDNN
 abstract Node
 
 
