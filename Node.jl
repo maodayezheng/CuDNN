@@ -1,8 +1,10 @@
 
-include('CUDA/CuDNN')
-using CuDNN
-abstract Node
+include("CUDA/CuDNN.jl")
 
+using CuDNN
+using CUDA
+include("CuDNNContext.jl")
+abstract Node
 
 type ConvNode <: Node
 convDesc::cudnnConvolutionDescriptor_t
@@ -42,7 +44,7 @@ return ConvNode(convDesc,filterDesc,biasDesc,algo,n*h*c*w)
 end
 
 #TODO
-function forward(ctx::CuDNNContext,node::convNode)
+function forward(ctx::CuDNNContext,node::ConvNode)
 resize(ctx,node.size)
 alpha =1.0
 beta = 0.0

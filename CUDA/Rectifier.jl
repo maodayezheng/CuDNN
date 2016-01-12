@@ -3,6 +3,7 @@
 # So cudnnLRNDescriptor_t is declared here to macth the CuDNN method
 
 typealias cudnnLRNDescriptor_t Ptr{Void} 
+export cudnnLRNDescriptor_t
 #cudnnLRNMode_t
 const CUDNN_LRN_CROSS_CHANNEL_DIM1 = 0
 

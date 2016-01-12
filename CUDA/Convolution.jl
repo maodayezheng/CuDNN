@@ -1,4 +1,5 @@
 typealias cudnnConvolutionDescriptor_t Ptr{Void} # hold the description of a convolution operation
+export cudnnConvolutionDescriptor_t
 #cudnnConvolutionMode_t
 const CUDNN_CONVOLUTION = 0
 const CUDNN_CROSS_CORRELATION = 1
@@ -89,6 +90,7 @@ type cudnnConvolutionFwdAlgoPerf_t
  time::Cfloat 
  memory::Csize_t
 end
+export cudnnConvolutionFwdAlgoPerf_t
 
 function cudnnFindConvolutionForwardAlgorithm(hanlde::cudnnHandle_t,srcDesc::cudnnTensorDescriptor_t,filterDesc::cudnnFilterDescriptor_t,convDesc::cudnnConvolutionDescriptor_t,destDesc::cudnnTensorDescriptor_t,requestedAlgoCount::Int)
 returnedAlgoCount = Cint[0]
@@ -136,6 +138,7 @@ time::Cfloat
 memory::Csize_t
 end
 
+export cudnnConvolutionBwdFilterAlgoPerf_t
 
 #cudnnConvolutionBwdDataPreference_t
 CUDNN_CONVOLUTION_BWD_DATA_NO_WORKSPACE = 0
@@ -155,6 +158,8 @@ status::Cint
 time::Cfloat
 memory::Csize_t
 end
+
+export cudnnConvolutionBwdDataAlgoPerf_t
 
 function cudnnConvolutionBackwardBias(handle::cudnnHandle_t,alpha,srcDesc::cudnnTensorDescriptor_t,srcData::CuPtr,beta,destDesc::cudnnTensorDescriptor_t,destData::CuPtr)
 @cudnncheck(:cudnnConvolutionBackwardBias,(cudnnHandle_t,Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void},Ptr{Void},cudnnTensorDescriptor_t,Ptr{Void}),handle,alpha,srcDesc,srcData,beta,destDesc,destData)
