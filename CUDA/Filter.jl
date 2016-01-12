@@ -1,5 +1,6 @@
 # filter pointer
 typealias cudnnFilterDescriptor_t Ptr{Void} # hold the description of a filter dataset 
+export cudnnFilterDescriptor_t
 function cudnnCreateFilterDescriptor()
 filterDesc = cudnnFilterDescriptor_t[0]
 @cudnncheck(:cudnnCreateFilterDescriptor,(Ptr{cudnnFilterDescriptor_t},),filterDesc)

@@ -18,6 +18,8 @@ dstData = CUDA.CuPtr()
 end
 end
 
+export CuDNNContext
+
 function free(ctx::CuDNNContext)
 CuDNN.cudnnDestroyTensorDescriptor(ctx.srcTensorDesc)
 CuDNN.cudnnDestroyTensorDescriptor(ctx.dstTensorDesc)

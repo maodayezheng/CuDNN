@@ -85,8 +85,9 @@ end
 
 #context pointer
 typealias cudaStream_t Ptr{Void} # hold Cuda Stream
+export cudaStrem_t
 typealias cudnnHandle_t Ptr{Void} # hold cuDNN library context
-
+export cudnnHandle_t
 function cudnnCreate()
 handle = cudnnHandle_t[0]
 @cudnncheck(:cudnnCreate, (Ptr{cudnnHandle_t},), handle)

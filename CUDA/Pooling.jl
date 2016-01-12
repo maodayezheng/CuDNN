@@ -1,5 +1,5 @@
 typealias cudnnPoolingDescriptor_t Ptr{Void}
-
+export cudnnPoolingDescriptor_t
 #cudnnPoolingMode_t
 const CUDNN_POOLING_MAX = 0
 const CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING = 1

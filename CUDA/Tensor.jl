@@ -1,6 +1,6 @@
 # Tensor discriptor 
 typealias cudnnTensorDescriptor_t Ptr{Void} # hold the description of generic n-D dataset 
-
+export cudnnTensorDescriptor_t
 #cudnnTensorFormat_t
 const CUDNN_TENSOR_NCHW = 0 #data laid out order: image, features map, rows, columns
 const CUDNN_TENSOR_NHWC = 1 #data laid out order: image, rows, columns, features map
